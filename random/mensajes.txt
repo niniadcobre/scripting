@@ -1,0 +1,11 @@
+-o Tecnicatura Universitaria en Administración de Sistemas y Software Libre
+xx ¿Qué hacemos? Mantenemos la infraestructura tecnológica funcionando
+== Trabajamos en TODO tipo de instituciones, pequeñas a muy grandes
+OO Redes, seguridad, almacenamiento, instalación, documentación...
+$$ Soporte a usuarios
+XX TOMAMOS DECISIONES TECNOLÓGICAS
+oo Software Libre
+@@ Adopción de tecnología ÉTICA
+?? SOBERANÍA DIGITAL
+## Dos años y medio de duración; horarios por la tarde.
+oo Carrera de índole práctica

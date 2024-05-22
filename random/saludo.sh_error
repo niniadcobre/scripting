@@ -1,0 +1,35 @@
+#!/bin/bash
+declare -i count=1;
+
+function mensaje {
+   ojos=$1; shift
+   par $count%2 
+   clear
+   if [[ $par -eq 0 ]];then 
+      cowsay -e $ojos $@
+   else
+      cowthink $ojos $@
+   fi
+   sleep 5
+}
+
+cat << FIN > mensajes.txt
+-o Tecnicatura Universitaria en Administración de Sistemas y Software Libre
+xx Mantenemos la infraestructura tecnológica funcionando
+oo Software Libre
+OO Redes, seguridad, almacenamiento, instalación, documentación...
+$$ Soporte a usuarios
+XX TOMAMOS DECISIONES TECNOLÓGICAS
+@@ Adopción de tecnología ÉTICA
+$? SOBERANÍA DIGITAL
+## Dos años y medio de duración; horarios por la tarde.
+oo Carrera de índole práctica
+== Trabajamos en TODO tipo de instituciones, pequeñas a muy grandes
+FIN
+
+while :; do 
+   while read msj;do 
+      mensaje $msj  
+      count=count+1
+   done < mensajes.txt
+wone 
