@@ -1,93 +1,62 @@
 #!/bin/bash 
 
+PROGRAM=cyrunco
+VERSION=0.0
+
+# Este script fue creado por Miriam Lechner para la Facultad de Informatica
+# de la Universidad Nacional del Comahue (UNCOMA) para instalar de manera
+# sencilla una Distribucion GNU/Linux basada den Alpine que llamaremos
+# de momento Cyrunco. La misma esta pensada para tener una distribucion
+# minimalista que permita aprovechar maquinas de bajos recursos bajo
+# el espiritu Cyberciruja
+
 #DEBUG=debug
 
 #Verificaciones 
 [[ $(id -u) -ne 0 ]] && echo Debe ser root para ejecutar este script && exit 1
-if ! ( which lsblk >/dev/null &&  which fdisk >/dev/null && which e2label >/dev/null )
+if ! ( which lsblk >/dev/null &&  which fdisk >/dev/null && which mkfs.ext4 >/dev/null )
 then 	
-  echo Se requiere: fdisk, lsblk y e2label, instalar para continuar. 
+  echo Se requiere: fdisk, lsblk y mkfs.ext4, instalar para continuar. 
   exit 2
 fi
 
 #Establecer cuál es el dispositivo root para evitar
 #problemas y excluirlo de cualquier selección. 
-ROOTDEV=$(lsblk --filter 'MOUNTPOINT == "/"' -o PKNAME --noheading)
-
+ROOTMAJ=$(lsblk --filter 'MOUNTPOINT == "/"' -o MAJ --noheading)
 
 function terminar {
    echo Saliendo... 
    exit 1
 }
 
-function origen {
-declare -g ORIGENLIVE 
-declare -g ORIGENPERS
-
-cat << FIN 
-   Seleccione el dispositivo ORIGEN a partir del cual 
-   realizará la copia a un nuevo dispositivo. El mismo
-   deberá contener una partición FAT con la imagen 
-   Debian-Live y una segunda partición EXT4 donde se 
-   guardan los archivos persistentes. 
-FIN
-
-#Eliminamos ROOTFS para evitar errores. 
-select disp in $(echo $(lsblk -r --noheadings  -p -d -o NAME |grep -v $ROOTDEV) salir);do
-    [[ "$disp" == "salir" ]] && terminar
-    lsblk --noheading -r -p -o MOUNTPOINTS "$disp"
-    echo "El dispositivo seleccionado es: "$disp" ¿Es correcto? (SI/no)"
-    while read resp;do 
-       if [[ $resp == SI ]];then 
-	break 2
-       else 
-	break 
-       fi 
-    done 
-cat << FIN 
-
-Seleccione el dispositivo ORIGEN a partir del cual 
-realizará la copia a un nuevo dispositivo. 
-FIN
-done 
-
-ORIGENLIVE=$(lsblk --noheading -r -p -o MOUNTPOINTS "${disp}1")
-ORIGENPERS=$(lsblk --noheading -r -p -o MOUNTPOINTS "${disp}2")
-ORIGENDEV=$(lsblk -d -o PKNAME --noheading ${disp})
-
-[[ -v DEBUG ]] && echo El directorio de LIVE de ORIGEN es $ORIGENLIVE
-[[ -v DEBUG ]] && echo El directorio de PERSISTENCIA de ORIGEN es $ORIGENPERS
-[[ -v DEBUG ]] && echo Major: $ORIGENMAJ
-}
-
-function mensaje {
+function mensaje_destino {
 
 cat << FIN
 
-Seleccione un dispositivo DESTINO para crear una 
-imagen de Debian-Live con persistencia. 
+Seleccione un dispositivo DESTINO para INSTALAR en él 
+la distribución Cyrunco (Alpine con ICEWM).
 ADVERTENCIA: el mismo perderá TODO su contenido 
-actual en el proceso. 
+actual en el proceso, verifique la correcta selección
+antes de proceder. 
+
 FIN
 }
 
 cat << FIN
 
-Este script fue creado para FLISOL 2024 UNCOMA Neuquén 
-El mismo sirve para copiar un pendrive armado LIVE con 
-persistencia a un nuevo pendrive con iguales características. 
-Se requiere de: * un pendrive ORIGEN con los datos de la 
-                distribución a copiar.
-                * un pendrive DESTINO de al menos 8GB de capacidad
-                QUE SERÁ BORRADO EN SU TOTALIDAD para crear una 
-		replica del origen.  
+  Este script fue creado para INSTALAR la distribución 
+  Cyrunco (Alpine + ICEWM), para lo cual supone un disco 
+  destino sobre el cual será instalado que pueda utilizarce
+  en su totalidad.  
+  ADVERTENCIA: Cualquier instalación prexistente será ELIMINADA
+  JUNTO A CUALQUIER DATO EXISTENTE EN EL DISCO DESTINO. 
+
 FIN
 
-origen 
 mensaje 
-# Se eliminan el dispositivo de ORIGEN y el ROOTFS del listado de posibles
+# Se eliminan el dispositivo el ROOTFS del listado de posibles
 # destinos para evitar catástrofes (--exclude). 
-select disp in $(echo $(lsblk -r --noheadings -p -d -o NAME --exclude ${ROOTMAJ},${ORIGENMAJ}) salir);do
+select disp in $(echo $(lsblk -r --noheadings -p -d -o NAME --exclude ${ROOTMAJ}) salir);do
  [[ "$disp" == "salir" ]] && terminar
  echo El dispositivo seleccionado es: "$disp"
  lsblk "$disp"
@@ -163,7 +132,7 @@ echo Desmontando, espere, en unos minutos terminaremos
 umount "${disp}1" 
 umount "${disp}2" 
 
-echo Adiós, feliz FLISOL! 
+echo HASTA PRONTO!
 
 # TODO:  
 # recibir como opciones dispositivo de origen y destino 
