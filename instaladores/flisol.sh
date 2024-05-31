@@ -12,17 +12,25 @@ fi
 
 #Establecer cuál es el dispositivo root para evitar
 #problemas y excluirlo de cualquier selección. 
-ROOTDEV=$(lsblk --filter 'MOUNTPOINT == "/"' -o PKNAME --noheading)
+ROOTDEV="/dev/$(lsblk --filter 'MOUNTPOINT == "/"' -o PKNAME --noheading)"
 
 
 function terminar {
-   echo Saliendo... 
-   exit 1
+# Código 1: salida a pedido del usuario
+# Código 2: salida por situación anormal, sin cambios en sistema 
+# Código 3: salida anormal, con cambios en sistema
+   case $1 in 
+     0) echo "Saliendo, todo OK :D" ;;
+     1) echo "Saliendo a pedido del usuario...";;
+     2) echo "Saliendo con errores pero sin cambios en sistema. :(";;
+     3) echo "Saliendo con errores y cambios parciales, REVISAR SISTEMA :'(" ;;
+     *) echo "Salida de error desconocida... reporte el BUG"
+   esac 
+   exit $1
 }
 
 function origen {
-declare -g ORIGENLIVE 
-declare -g ORIGENPERS
+declare -g ORIGENLIVE ORIGENPERS ORIGENDEV
 
 cat << FIN 
    Seleccione el dispositivo ORIGEN a partir del cual 
@@ -34,7 +42,7 @@ FIN
 
 #Eliminamos ROOTFS para evitar errores. 
 select disp in $(echo $(lsblk -r --noheadings  -p -d -o NAME |grep -v $ROOTDEV) salir);do
-    [[ "$disp" == "salir" ]] && terminar
+    [[ "$disp" == "salir" ]] && terminar 1
     lsblk --noheading -r -p -o MOUNTPOINTS "$disp"
     echo "El dispositivo seleccionado es: "$disp" ¿Es correcto? (SI/no)"
     while read resp;do 
@@ -51,16 +59,21 @@ realizará la copia a un nuevo dispositivo.
 FIN
 done 
 
-ORIGENLIVE=$(lsblk --noheading -r -p -o MOUNTPOINTS "${disp}1")
-ORIGENPERS=$(lsblk --noheading -r -p -o MOUNTPOINTS "${disp}2")
-ORIGENDEV=$(lsblk -d -o PKNAME --noheading ${disp})
+# El script asume que la primer partición del disco tiene la imagen
+# live y la segunda partición la información de persistencia
+ORIGENLIVE=$(lsblk  -r -o MOUNTPOINT,TYPE "${disp}" |grep part |sed -e 's/part//' |head -1)
+ORIGENPERS=$(lsblk  -r -o MOUNTPOINT,TYPE "${disp}" |grep part |sed -e 's/part//' |tail -1)
+ORIGENDEV=${disp}
 
-[[ -v DEBUG ]] && echo El directorio de LIVE de ORIGEN es $ORIGENLIVE
-[[ -v DEBUG ]] && echo El directorio de PERSISTENCIA de ORIGEN es $ORIGENPERS
-[[ -v DEBUG ]] && echo Major: $ORIGENMAJ
+if [[ -z "$ORIGENLIVE" ]] || [[ -z "$ORIGENPERS" ]] || [[ -z "$ORIGENDEV" ]];
+then 
+   echo No se pudo especificar el origen, saliendo... 
+   terminar 2
+fi
 }
 
-function mensaje {
+function destino {
+declare -g DESTINODEV
 
 cat << FIN
 
@@ -69,6 +82,38 @@ imagen de Debian-Live con persistencia.
 ADVERTENCIA: el mismo perderá TODO su contenido 
 actual en el proceso. 
 FIN
+
+# Se eliminan el dispositivo de ORIGEN y el ROOTFS del listado de posibles
+# destinos para evitar catástrofes 
+select disp in $(echo $(lsblk -r --noheadings -p -d -o NAME |egrep -v "$ROOTDEV|$ORIGENDEV" ) salir);do
+ [[ "$disp" == "salir" ]] && terminar 1
+ echo El dispositivo seleccionado es: "$disp"
+ lsblk "$disp"
+ echo ¿Es correcta la elección? ¿SI/no? 
+ while read resp;do 
+   if [[ $resp == SI ]];then 
+     break 2
+   else break 
+   fi 
+ done   
+done 
+
+echo 
+echo Se procederá a destruir la información en "$disp"
+echo ¿Está de acuerdo? ¿SI/no? 
+while read resp;do 
+  if [[ $resp == SI ]];then 
+    break 
+   else 
+    echo Saliendo, sin cambios sobre "$disp"
+    terminar 1
+   fi 
+done   
+
+DESTINODEV="$disp"
+[[ -z "$DESTINODEV " ]] && echo Destino inválido && terminar 2
+#TODO: faltaría verificar que la capacidad del pendrive 
+#      destino sea igual o superior a 8GB 
 }
 
 cat << FIN
@@ -83,87 +128,79 @@ Se requiere de: * un pendrive ORIGEN con los datos de la
 		replica del origen.  
 FIN
 
+# Determinar dispositivos de origen y de destino. 
 origen 
-mensaje 
-# Se eliminan el dispositivo de ORIGEN y el ROOTFS del listado de posibles
-# destinos para evitar catástrofes (--exclude). 
-select disp in $(echo $(lsblk -r --noheadings -p -d -o NAME --exclude ${ROOTMAJ},${ORIGENMAJ}) salir);do
- [[ "$disp" == "salir" ]] && terminar
- echo El dispositivo seleccionado es: "$disp"
- lsblk "$disp"
- fdisk -l "$disp"
- echo ¿Es correcta la elección? ¿SI/no? 
- while read resp;do 
-   if [[ $resp == SI ]];then 
-     break 2
-   else break 
-   fi 
- done   
- mensaje 
-done 
-
-echo 
-echo Se procederá a destruir la información en "$disp"
-echo ¿Está de acuerdo? ¿SI/no? 
-while read resp;do 
-  if [[ $resp == SI ]];then 
-    break 
-   else 
-    echo Saliendo, sin cambios sobre "$disp"
-    exit 3
-   fi 
-done   
+destino  
 
 # Intentamos desmontar particiones del destino 
-for mpt in $(lsblk --noheading -r -p -o MOUNTPOINTS  "$disp");do
+for mpt in $(lsblk --noheading -r -p -o MOUNTPOINTS "$DESTINODEV");do
   echo Desmontando $mpt 
   if ! umount $mpt;then 
-    echo No fue posible desmontar $mpt, saliendo... 
-    exit 1
+    echo No fue posible desmontar $mpt
+    terminar 2
   fi
 done 
 
 echo 
-echo Escribiendo nueva tabla de particiones en "$disp" 
+echo Escribiendo nueva tabla de particiones en "$DESTINODEV" 
 # Eliminar cualquier tabla de partición existente
-echo -e "o\nw" | fdisk "$disp" > /dev/null
+echo -e "o\nw" | fdisk "$DESTINODEV" > /dev/null 2>&1
 
 # Crear la partición FAT de 5GB
-echo -e "n\np\n1\n\n+5G\nt\nb\nw" | fdisk "$disp" > /dev/null
+echo -e "n\np\n1\n\n+5G\nt\nb\nw" | fdisk "$DESTINODEV" > /dev/null 2>&1
 
 # Crear la partición EXT4 con el resto del espacio
-echo -e "n\np\n2\n\n\nw" | fdisk "$disp" > /dev/null
+echo -e "n\np\n2\n\n\nw" | fdisk "$DESTINODEV" > /dev/null 2>&1
 
-partprobe "$disp" > /dev/null
-fdisk -l "$disp" 
+partprobe "$DESTINODEV" > /dev/null 2>&1
+
+echo Tabla de particiones creada... 
+lsblk "$DESTINODEV"
+
+DESTDEVLIVE=$(lsblk  -r -o PATH,TYPE "${DESTINODEV}" |grep part |sed -e 's/part//' \
+	-e 's/ //'|head -1)
+DESTDEVPERS=$(lsblk  -r -o PATH,TYPE "${DESTINODEV}" |grep part |sed -e 's/part//' \
+        -e 's/ //'|tail -1)
 
 echo
-echo Creando sistemas de archivo en "${disp}1" para LIVE
 mptlive=/tmp/FATLIVE/
-mkfs.fat -F32 "${disp}1"
-echo Montando "${disp}1"
+echo Creando sistemas de archivo en "$DESTDEVLIVE" para LIVE
+mkfs.fat -F32 "$DESTDEVLIVE"
+echo Montando "$DESTDEVLIVE"
 [[ ! -d $mptlive ]] && mkdir $mptlive
-mount "${disp}1" $mptlive
+if ! mount "$DESTDEVLIVE" $mptlive ;then 
+	echo No fue posible montar $DESTDEVLIVE en $mptlive, saliendo
+	terminar 3
+fi 
 cd ${ORIGENLIVE}
 echo Copiando de origen a $mptlive, puede tomar un tiempo
 cp -a . $mptlive/ 2>/dev/null
 cd $OLDPWD
 
 echo
-echo Creando sistemas de archivo en "${disp}2" para PERSISTENCIA, 
+echo Creando sistemas de archivo en "$DESTDEVPERS" para PERSISTENCIA, 
 echo puede tomar varios minutos... 
 mptpers=/tmp/EXT4PERS 
-mkfs.ext4  "${disp}2"
-e2label  "${disp}2" persistence
-echo Montando "${disp}2" y copiando... puede tomar un tiempo
+mkfs.ext4  "$DESTDEVPERS"
+e2label  "$DESTDEVPERS" persistence
+echo Montando "$DESTDEVPERS" 
 [[ ! -d $mptpers ]] && mkdir $mptpers
-mount ${disp}2 $mptpers  && rsync -a ${ORIGENPERS}/ $mptpers/
+if ! mount "$DESTDEVPERS" $mptpers ;then 
+   echo No fue posible montar $DESTDEVPERS en $mptpers, saliendo
+   terminar 3
+fi 
+echo Copiando de origen a $mptpers, puede tomar un tiempo
+rsync -a ${ORIGENPERS}/ $mptpers/
 
 echo Desmontando, espere, en unos minutos terminaremos
-umount "${disp}1" 
-umount "${disp}2" 
+umount "$DESTDEVLIVE"
+umount "$DESTDEVPERS" 
 
-echo Adiós, feliz FLISOL! 
+#Limpiando 
+rmdir $mptlive
+rmdir $mptpers
+
+echo Adiós, feliz FLISOL! && terminar 0
 
 # TODO:  
 # recibir como opciones dispositivo de origen y destino 
