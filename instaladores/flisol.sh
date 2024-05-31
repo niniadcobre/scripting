@@ -112,8 +112,6 @@ done
 
 DESTINODEV="$disp"
 [[ -z "$DESTINODEV " ]] && echo Destino inválido && terminar 2
-#TODO: faltaría verificar que la capacidad del pendrive 
-#      destino sea igual o superior a 8GB 
 }
 
 cat << FIN
@@ -203,8 +201,11 @@ rmdir $mptpers
 echo Adiós, feliz FLISOL! && terminar 0
 
 # TODO:  
-# recibir como opciones dispositivo de origen y destino 
+# recibir como opciones dispositivo de origen y destino para evitar
+# menu de preguntas. 
 # Asociar mejor las verificaciones 
 # Agregar comillas dobles donde corresponda 
-# Mejorar en general la estética de los mensajes
-# Sobre las particiones de origen, eliminar los ${disp}1 etc harcodeados
+# Mejorar en general la estética de los mensajes, colores etc. 
+# Interfaz con dialog 
+# Faltaría verificar que la capacidad del pendrive 
+# destino sea igual o superior a 8GB 
