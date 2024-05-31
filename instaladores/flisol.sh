@@ -211,3 +211,57 @@ echo Adiós, feliz FLISOL! && terminar 0
 # destino sea igual o superior a 8GB 
 # Verificar que las variables DESTDEVLIVE y DESTDEVPERS estén definidas
 # antes de ser usadas. 
+# Se necesita un pendrive de al menos 8GB.
+#
+# RECETA PARA ARMAR EL PRIMER PENDRIVE 
+# con PERSISTENCIA (hay herramientas como ventoy)
+# En un pendrive de 8G o mas (ej /dev/sdb)
+# Se crean ahí dos particiones
+# 1. una de 5GB fat (seleccionar fat32), puede ser menos
+# dependiendo de la distro 
+# 2. una ext4
+
+# luego de crear el filesystem ext4, se le coloca la etiqueta
+# "persistente" a la particion ext4.
+# Ejemplo:
+# e2label /dev/sdb2 persistence
+
+# Montamos la particion fat y colocamos ahí el live cd. Ejemplo:
+# mount /dev/sdb1 /mnt
+# cd /mnt
+# 7z x /home/user/iso/debian-live.iso (distro favorita)
+
+# Editamos el archivo boot/grub/grub.cfg de la particion fat, y en los
+# argumentos del kernel agregamos el argumento "persistence". Ejemplo
+
+# editar /mnt/boot/grub/grub.cfg
+# agregar persistence a la linea linux:
+#linux /live/vmlinuz-6.1.0-7-amd64 boot=live components persistence
+#quiet splash etc
+
+#Desmontamos.
+# umount /mnt
+
+#En la particion 2 ext4:
+# mount /dev/sdb2 /mnt
+# cd /mnt
+# echo / union > persistence.conf
+# cd /
+# umount /mnt
+
+# Listo. Reiniciar y arrancar del pendrive para probar.
+
+# Para poner ese GNU/Linux en español una vez iniciado hay que hacer un pasito mas:
+
+#abrir una terminal en el live
+#sudo su -
+#export LANG=es_ES.UTF-8
+
+#dpkg-reconfigure locales
+
+#(y seleccionar en el menu que construya el locale es_ES.UTF-8 y luego
+#seleccionar ese como default).
+
+#Listo, reiniciar. Una contra de esta opción es que es mas lento 
+#que instalar en el disco interno. Depende del pendrive, y de que 
+#tan bueno sea el puerto usb para velocidades altas.
