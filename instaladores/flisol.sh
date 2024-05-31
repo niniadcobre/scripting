@@ -209,3 +209,5 @@ echo Adiós, feliz FLISOL! && terminar 0
 # Interfaz con dialog 
 # Faltaría verificar que la capacidad del pendrive 
 # destino sea igual o superior a 8GB 
+# Verificar que las variables DESTDEVLIVE y DESTDEVPERS estén definidas
+# antes de ser usadas. 
