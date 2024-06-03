@@ -12,19 +12,6 @@
 
 #DEBUG=debug
 
-#Verificaciones 
-[[ $(id -u) -ne 0 ]] && echo Debe ser root para ejecutar este script && terminar 2
-if ! ( which lsblk >/dev/null &&  which fdisk >/dev/null && which e2label >/dev/null )
-then 	
-  echo Se requiere: fdisk, lsblk y e2label, instalar para continuar. 
-  terminar 2 
-fi
-
-#Establecer cuál es el dispositivo root para evitar
-#problemas y excluirlo de cualquier selección. 
-ROOTDEV="/dev/$(lsblk --filter 'MOUNTPOINT == "/"' -o PKNAME --noheading)"
-
-
 function terminar {
 # Código 1: salida a pedido del usuario
 # Código 2: salida por situación anormal, sin cambios en sistema 
@@ -38,6 +25,18 @@ function terminar {
    esac 
    exit $1
 }
+
+#Verificaciones 
+[[ $(id -u) -ne 0 ]] && echo Debe ser root para ejecutar este script && terminar 2
+if ! ( which lsblk >/dev/null &&  which fdisk >/dev/null && which e2label >/dev/null )
+then 	
+  echo Se requiere: fdisk, lsblk y e2label, instalar para continuar. 
+  terminar 2 
+fi
+
+#Establecer cuál es el dispositivo root para evitar
+#problemas y excluirlo de cualquier selección. 
+ROOTDEV="/dev/$(lsblk --filter 'MOUNTPOINT == "/"' -o PKNAME --noheading)"
 
 function origen {
 declare -g ORIGENLIVE ORIGENPERS ORIGENDEV
