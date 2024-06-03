@@ -1,13 +1,23 @@
 #!/bin/bash 
+# Copyright (C) 2024, Miriam Lechner
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later 
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT 
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.# You should have received a copy of the GNU General Public License along with 
+# this program. If not, see <https://www.gnu.org/licenses/>.
 
 #DEBUG=debug
 
 #Verificaciones 
-[[ $(id -u) -ne 0 ]] && echo Debe ser root para ejecutar este script && exit 1
+[[ $(id -u) -ne 0 ]] && echo Debe ser root para ejecutar este script && terminar 2
 if ! ( which lsblk >/dev/null &&  which fdisk >/dev/null && which e2label >/dev/null )
 then 	
   echo Se requiere: fdisk, lsblk y e2label, instalar para continuar. 
-  exit 2
+  terminar 2 
 fi
 
 #Establecer cuál es el dispositivo root para evitar
@@ -201,18 +211,16 @@ rmdir $mptpers
 echo Adiós, feliz FLISOL! && terminar 0
 
 # TODO:  
-# recibir como opciones dispositivo de origen y destino para evitar
+# 1) recibir como opciones dispositivo de origen y destino para evitar
 # menu de preguntas. 
-# Asociar mejor las verificaciones 
-# Agregar comillas dobles donde corresponda 
-# Mejorar en general la estética de los mensajes, colores etc. 
-# Interfaz con dialog 
-# Faltaría verificar que la capacidad del pendrive 
-# destino sea igual o superior a 8GB 
-# Verificar que las variables DESTDEVLIVE y DESTDEVPERS estén definidas
-# antes de ser usadas. 
-# Se necesita un pendrive de al menos 8GB.
-#
+# 2) Asociar mejor las verificaciones 
+# 3) Verificar que las variables DESTDEVLIVE y DESTDEVPERS estén definidas
+# 4) Faltaría verificar que la capacidad del pendrive sea acorde, 8GB o mas 
+# 5) Mejorar en general la estética de los mensajes, colores etc. 
+# 6) Interfaz con dialog 
+# 7) Implementar una opción que permita crear un pendrive con 
+# persistencia origen siguiendo la receta de más abajo. La opción 
+# debiera estár seguida de la ruta al archivo ISO a utilizar.  
 # RECETA PARA ARMAR EL PRIMER PENDRIVE 
 # con PERSISTENCIA (hay herramientas como ventoy)
 # En un pendrive de 8G o mas (ej /dev/sdb)
