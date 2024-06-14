@@ -132,7 +132,7 @@ done
 }
 
 function validar_targz {
-   ! tar tvfz "$1"  >/dev/null 2>&1 
+   tar tvfz "$1"  >/dev/null 2>&1 
 }
 
 function origen {
