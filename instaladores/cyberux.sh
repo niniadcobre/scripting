@@ -35,8 +35,9 @@ function terminar {
 
 #Verificaciones 
 [[ $(id -u) -ne 0 ]] && echo Debe ser root para ejecutar este script && terminar 2
-if ! { which tar && which lsblk &&  which fdisk && \
-	which e2label ; } >/dev/null 2>&1
+
+if !(which tar && which lsblk &&  which fdisk && \
+	which e2label ) >/dev/null 2>&1
 then 	
   echo Se requiere: tar, fdisk, lsblk y e2label, instalar para continuar. 
   terminar 2 
